@@ -3,9 +3,7 @@ import axios from "axios";
 
 const URL = "https://www.optimea.fr/product/climatiseur-split-mobile-midea/";
 
-const browser = await chromium.launch({
-  headless: true
-});
+const browser = await chromium.launch({ headless: true });
 
 const page = await browser.newPage({
   userAgent:
@@ -18,17 +16,24 @@ await page.goto(URL, {
 });
 
 const html = await page.content();
-
 await browser.close();
 
-if (!html.includes("Rupture de stock")) {
+// On ne notifie que si la page contient explicitement une indication de stock.
+const enStock =
+  html.includes(">En stock<") ||
+  html.includes("En stock") ||
+  html.includes("Ajouter au panier");
+
+if (enStock) {
   await axios.post(
     `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`,
     {
-      chat_id: process.env.CHAT_ID,
-      text: `🎉 Le climatiseur est disponible !\n\n${URL}`
+      chat_id: process.env.BOT_TOKEN ? process.env.CHAT_ID : "",
+      text: `🎉 Le climatiseur est EN STOCK !\n\n${URL}`
     }
   );
-}
 
-console.log("Vérification terminée.");
+  console.log("Notification envoyée.");
+} else {
+  console.log("Toujours pas en stock.");
+}
