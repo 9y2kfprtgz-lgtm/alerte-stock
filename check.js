@@ -1,53 +1,35 @@
-import { chromium } from "playwright";
 import axios from "axios";
 
-const URL = "https://www.optimea.fr/product/climatiseur-split-mobile-midea/";
+const API =
+  "https://www.optimea.fr/wp-json/wc/store/v1/products?slug=climatiseur-split-mobile-midea";
 
-const browser = await chromium.launch({
-  headless: true
-});
+try {
+  const { data } = await axios.get(API);
 
-const page = await browser.newPage();
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error("Produit introuvable.");
+  }
 
-await page.goto(URL, {
-  waitUntil: "domcontentloaded",
-  timeout: 60000
-});
+  const product = data[0];
 
-// attendre un peu que la page se stabilise
-await page.waitForTimeout(8000);
+  console.log("Nom :", product.name);
+  console.log("Stock :", product.stock_status);
 
-const html = await page.content();
-
-await browser.close();
-
-console.log("Page chargée.");
-
-const title = await page.title();
-console.log(title);
-
-const html = await page.content();
-
-if (title.includes("Just a moment")) {
-    console.log("Cloudflare bloque encore.");
-    process.exit(0);
-}
-
-const dispo =
-    html.includes(">En stock<") ||
-    html.includes("En stock") ||
-    html.includes("Disponibilité : En stock");
-
-if (dispo) {
-    console.log("Produit EN STOCK");
-
+  if (product.stock_status === "instock") {
     await axios.post(
-        `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`,
-        {
-            chat_id: process.env.CHAT_ID,
-            text: `🚨 Climatiseur Midea DISPONIBLE !\n${URL}`
-        }
+      `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`,
+      {
+        chat_id: process.env.CHAT_ID,
+        text:
+          "🎉 LA CLIM EST EN STOCK !\n\nhttps://www.optimea.fr/product/climatiseur-split-mobile-midea/"
+      }
     );
-} else {
+
+    console.log("Notification envoyée !");
+  } else {
     console.log("Toujours en rupture.");
+  }
+} catch (e) {
+  console.error(e.response?.data || e.message);
+  process.exit(1);
 }
