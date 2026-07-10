@@ -10,15 +10,28 @@ const browser = await chromium.launch({
 const page = await browser.newPage();
 
 await page.goto(URL, {
-  waitUntil: "networkidle",
+  waitUntil: "domcontentloaded",
   timeout: 60000
 });
+
+// attendre un peu que la page se stabilise
+await page.waitForTimeout(8000);
 
 const html = await page.content();
 
 await browser.close();
 
 console.log("Page chargée.");
+
+const title = await page.title();
+console.log(title);
+
+const html = await page.content();
+
+if (title.includes("Just a moment")) {
+    console.log("Cloudflare bloque encore.");
+    process.exit(0);
+}
 
 const dispo =
     html.includes(">En stock<") ||
